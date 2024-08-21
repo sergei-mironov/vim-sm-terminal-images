@@ -90,11 +90,9 @@ fun! PopupCreate(filename, prop, col, row, cols, rows)
   let background_higroup =
         \ get(b:, 'terminal_images2_background', 'TerminalImagesBackground')
 
-  let left_margin = s:Get('terminal_images2_left_margin')
-
 	let popup_id = popup_create('<popup>', #{
         \ line: a:row-a:prop.lnum-1,
-        \ col: left_margin + a:col,
+        \ col: a:col,
         \ pos: 'topleft',
         \ highlight: background_higroup,
         \ fixed: 1,
@@ -143,11 +141,17 @@ endfun
 
 fun! PopupGetOrCreate(filename, prop, col, row, cols, rows)
   for popup_id in popup_list()
-    let popup_opt = popup_getoptions(popup_id)
-    echow "Checking popup_id".string(popup_id).": ".string(popup_opt)
-    if has_key(popup_opt, "textpropid") && popup_opt.textpropid == a:prop.id
-      echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
-      return popup_id
+    let opt = popup_getoptions(popup_id)
+    echow "Checking popup_id".string(popup_id).": ".string(opt)
+    if has_key(opt, "textpropid") && opt.textpropid == a:prop.id
+      if opt.maxwidth==a:cols && opt.maxheight==a:rows
+        echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
+        return popup_id
+      else
+        call popup_close(popup_id)
+        echow "Re-creating popup for prop_id ".string(a:prop.id)
+        break
+      endif
     endif
   endfor
   let popup_id = PopupCreate(a:filename, a:prop, a:col, a:row, a:cols, a:rows)
@@ -266,13 +270,14 @@ fun! PopupTest2()
 endfun
 
 fun! PopupTest3()
+  let left_margin = s:Get('terminal_images2_left_margin')
   for img in FindImages()
     let filename = img.filename
     let lnum = img.lnum
     let [cols, rows] = PopupImageDims(filename, -1, -1)
 
     let prop = PropGetOrCreate(lnum, filename)
-    let popup_id = PopupGetOrCreate(filename, prop, 0, prop.lnum, cols, rows)
+    let popup_id = PopupGetOrCreate(filename, prop, left_margin, prop.lnum, cols, rows)
   endfor
 endfun
 
