@@ -16,30 +16,60 @@ fun! s:GetWindowWidth() abort
   return winwidth(0) - s:GetDecorationWidth()
 endfun
 
-fun! PopupNextId()
-  let b:terminal_images_propid_count =
-        \ get(b:, 'terminal_images_propid_count', 0) + 1
-  return b:terminal_images_propid_count
+fun! PropNextId()
+  let b:terminal_images2_propid_count =
+        \ get(b:, 'terminal_images2_propid_count', 0) + 1
+  return b:terminal_images2_propid_count
 endfun
 
-fun! PopupCreateProp(lnum)
+
+fun! PropGetIdByUrl(url)
+  return str2nr(sha256(a:url)[:6],16)
+endfun
+
+
+fun! PropCreateOrGetId(url)
+  let b:terminal_images2_url2prop = get(b:, 'terminal_images2_url2prop', {})
+  if has_key(b:terminal_images2_url2prop, a:url)
+    let prop_id = b:terminal_images2_url2prop[a:url]
+  else
+    let prop_id = PropNextId()
+    let b:terminal_images2_url2prop[a:url] = prop_id
+  endif
+  return prop_id
+endfun
+
+
+fun! PropCreate(lnum, url)
   if empty(prop_type_get(g:terminal_images2_prop_type_name))
     call prop_type_add(g:terminal_images2_prop_type_name, {})
   endif
-	let prop_id = PopupNextId()
+	let prop_id = PropGetIdByUrl(a:url)
 	" let prop_id = 4444
 	call prop_add(a:lnum, 1, #{
         \ length: 0,
         \ type: g:terminal_images2_prop_type_name,
         \ id: prop_id,
         \ })
+  echow "Created prop_id ".string(prop_id). " at lnum ".string(a:lnum)
   return prop_id
 endfun
 
-fun! PopupCreate(col, row, cols, rows)
-	let lnum = a:row
+fun! PropGetOrCreate(lnum, url)
+	let prop_id = PropGetIdByUrl(a:url)
+  let props = prop_list(a:lnum, #{ids: [prop_id]})
+  if len(props)==0
+    return PropCreate(a:lnum, a:url)
+  elseif len(props)==1
+    echow "Found prop_id ".string(prop_id). " at lnum ".string(a:lnum)
+    return prop_id
+  else
+    throw "Too many props in line".a:lnum
+  endif
+endfun
 
-  let prop_id = PopupCreateProp(lnum)
+fun! PopupCreate(filename, prop_id, col, row, cols, rows)
+	let lnum = a:row
 
   let background_higroup =
         \ get(b:, 'local_background', 'TerminalImagesBackground')
@@ -56,14 +86,29 @@ fun! PopupCreate(col, row, cols, rows)
         \ maxheight: a:rows, maxwidth: a:cols,
         \ zindex: 1000,
         \ textprop: g:terminal_images2_prop_type_name,
-        \ textpropid: prop_id,
+        \ textpropid: a:prop_id,
         \ })
+  echow "Created popup_id ". string(popup_id). " for prop_id ".string(a:prop_id)
+  call PopupUploadImage(popup_id, a:filename, a:cols, a:rows)
+  return popup_id
+endfun
+
+fun! PopupGetOrCreate(filename, prop_id, col, row, cols, rows)
+  for popup_id in popup_list()
+    let popup_opt = popup_getoptions(popup_id)
+    echow "Checking popup_id".string(popup_id).": ".string(popup_opt)
+    if has_key(popup_opt, "textpropid") && popup_opt.textpropid == a:prop_id
+      echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop_id)
+      return popup_id
+    endif
+  endfor
+  let popup_id = PopupCreate(a:filename, a:prop_id, a:col, a:row, a:cols, a:rows)
   return popup_id
 endfun
 
 fun! PopupUploadImage(popup_id, filename, cols, rows)
   let props = popup_getpos(a:popup_id)
-  echomsg string(props)
+  echow string(props)
   let cols = a:cols
   let rows = a:rows
   let flags = ""
@@ -119,7 +164,9 @@ endfun
 fun! PopupTest2()
   let filename = "_parabola.png"
   let [cols, rows] = PopupImageDims(filename)
-  let popup_id = PopupCreate(101, line('.'), cols, rows)
-  call PopupUploadImage(popup_id, filename, cols, rows)
+  let lnum = line('.')
+
+  let prop_id = PropGetOrCreate(lnum, filename)
+  let popup_id = PopupGetOrCreate(filename, prop_id, 101, lnum, cols, rows)
 endfun
 
