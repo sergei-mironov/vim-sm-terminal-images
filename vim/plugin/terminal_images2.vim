@@ -46,17 +46,18 @@ fun! PropGetIdByUrl(url)
 endfun
 
 
-fun! PropCreateOrGetId(url)
-  let b:terminal_images2_url2prop = get(b:, 'terminal_images2_url2prop', {})
-  if has_key(b:terminal_images2_url2prop, a:url)
-    let prop_id = b:terminal_images2_url2prop[a:url]
-  else
-    let prop_id = PropNextId()
-    let b:terminal_images2_url2prop[a:url] = prop_id
-  endif
-  return prop_id
-endfun
+" fun! PropCreateOrGetId(url)
+"   let b:terminal_images2_url2prop = get(b:, 'terminal_images2_url2prop', {})
+"   if has_key(b:terminal_images2_url2prop, a:url)
+"     let prop_id = b:terminal_images2_url2prop[a:url]
+"   else
+"     let prop_id = PropNextId()
+"     let b:terminal_images2_url2prop[a:url] = prop_id
+"   endif
+"   return prop_id
+" endfun
 
+let b:terminal_images2_prop2line = {}
 
 fun! PropCreate(lnum, url)
   if empty(prop_type_get(g:terminal_images2_prop_type_name))
@@ -70,19 +71,28 @@ fun! PropCreate(lnum, url)
         \ id: prop_id,
         \ })
   echow "Created prop_id ".string(prop_id). " at lnum ".string(a:lnum)
-  return #{id:prop_id, lnum:a:lnum}
+
+  let prop = #{id:prop_id, lnum:a:lnum}
+  " let b:terminal_images2_prop2line[prop_id] = a:lnum
+  return prop
 endfun
 
+
 fun! PropGetOrCreate(lnum, url)
+  let lnum = a:lnum
+  if lnum > line('$')
+    let lnum=line('$')
+  endif
 	let prop_id = PropGetIdByUrl(a:url)
-  let props = prop_list(a:lnum, #{ids: [prop_id]})
+  call prop_remove(#{id:prop_id})
+  let props = prop_list(lnum, #{ids: [prop_id]})
   if len(props)==0
-    return PropCreate(a:lnum, a:url)
+    return PropCreate(lnum, a:url)
   elseif len(props)==1
-    echow "Found prop_id ".string(prop_id). " at lnum ".string(a:lnum)
-    return #{id:prop_id, lnum:a:lnum}
+    echow "Found prop_id ".string(prop_id). " at lnum ".string(lnum)
+    return #{id:prop_id, lnum:lnum}
   else
-    throw "Too many props in line".a:lnum
+    throw "Too many props in line".lnum
   endif
 endfun
 
@@ -98,7 +108,6 @@ fun! PopupCreate(filename, prop, col, row, cols, rows)
         \ highlight: background_higroup,
         \ fixed: 1,
         \ flip: 0,
-        \ wrap: 1,
         \ posinvert: 0,
         \ minheight: a:rows, minwidth: a:cols,
         \ maxheight: a:rows, maxwidth: a:cols,
@@ -112,32 +121,35 @@ fun! PopupCreate(filename, prop, col, row, cols, rows)
 endfun
 
 
-fun! PopupOccupiedLines1(popup_id) " [int,int]|[]
+fun! PopupOccupiedLines1(popup_id, excluded) " [int,int]|[]
   let sline = line('w0')
   let pos = popup_getpos(a:popup_id)
   let opt = popup_getoptions(a:popup_id)
-  if get(opt, "textprop","") == g:terminal_images2_prop_type_name
+  if count(a:excluded, get(opt, "textpropid", -1))==0 &&
+   \ get(opt, "textprop", "") == g:terminal_images2_prop_type_name &&
+   \ pos.visible
     return [sline+pos.line-1, sline+pos.line-1+opt.maxheight]
   else
     return []
   endif
 endfun
 
-fun! PopupOccupiedLines() " [[int,int]]
+fun! s:Compare(a,b)
+  if a:a[0]!=a:b[0]
+    return a:a[0]>a:b[0]
+  else
+    return a:a[1]>a:b[1]
+  endif
+endfun
+
+fun! PopupOccupiedLines(excluded) " [[int,int]]
   let ret = []
   for popup_id in popup_list()
-    let occupied = PopupOccupiedLines1(popup_id)
+    let occupied = PopupOccupiedLines1(popup_id, a:excluded)
     if len(occupied)>0
       call add(ret, occupied)
     endif
   endfor
-  fun! s:Compare(a,b)
-    if a:a[0]!=a:b[0]
-      return a:a[0]>a:b[0]
-    else
-      return a:a[1]>a:b[1]
-    endif
-  endfun
   return sort(ret, "s:Compare")
 endfun
 
@@ -148,6 +160,11 @@ fun! PopupGetOrCreate(filename, prop, col, row, cols, rows)
     if has_key(opt, "textpropid") && opt.textpropid == a:prop.id
       if opt.maxwidth==a:cols && opt.maxheight==a:rows
         echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
+        call popup_move(popup_id, #{line:a:row-a:prop.lnum-1})
+        let pos = popup_getpos(popup_id)
+        if !pos.visible
+          call popup_show(popup_id)
+        endif
         return popup_id
       else
         call popup_close(popup_id)
@@ -292,18 +309,25 @@ endfun
 
 fun! PopupTest3()
   let left_margin = s:Get('terminal_images2_left_margin')
-  let segments = PopupOccupiedLines()
+  let excluded = []
+  for img in FindImages()
+    call add(excluded, PropGetIdByUrl(img.filename))
+  endfor
+  let segments = PopupOccupiedLines(excluded)
   for img in FindImages()
     let filename = img.filename
     let lnum = img.lnum
-
 
     let [cols, rows] = PopupImageDims(filename, -1, -1)
     let new_start_pos = FindSegments(segments, rows, line("w0"))
     let prop = PropGetOrCreate(new_start_pos, filename)
 
     let popup_id = PopupGetOrCreate(filename, prop, left_margin, new_start_pos, cols, rows)
-    call add(segments, PopupOccupiedLines1(popup_id))
+    let seg = PopupOccupiedLines1(popup_id, [])
+    if len(seg)>0
+      call add(segments, seg)
+      let segments = sort(segments, "s:Compare")
+    endif
   endfor
 endfun
 
