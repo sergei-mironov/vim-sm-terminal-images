@@ -114,7 +114,7 @@ fun! PopupImageDims(filename)
 endfun
 
 fun! PopupTest2()
-  let filename = "tex/img/parabola.png"
+  let filename = "_parabola.png"
   let [cols, rows] = PopupImageDims(filename)
   let popup_id = PopupCreate(101, line('.'), cols, rows)
   call PopupUploadImage(popup_id, filename, cols, rows)
