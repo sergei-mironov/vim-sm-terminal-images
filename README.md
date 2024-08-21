@@ -6,7 +6,7 @@ entirely experimental.
 
 The intended differences are:
 - Less aggressive image positioning
-- Fast image reloading via the restoration of text properties after buffer rereads (handling of
+- Fast image "reloading" via the restoration of text properties on buffer rereads (handling of
   Litrepl evaluations)
 
 
