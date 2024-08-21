@@ -94,9 +94,11 @@ fun! PopupCreate(filename, prop, col, row, cols, rows)
         \ line: a:row-a:prop.lnum-1,
         \ col: a:col,
         \ pos: 'topleft',
+        \ close: 'click',
         \ highlight: background_higroup,
         \ fixed: 1,
         \ flip: 0,
+        \ wrap: 1,
         \ posinvert: 0,
         \ minheight: a:rows, minwidth: a:cols,
         \ maxheight: a:rows, maxwidth: a:cols,
@@ -260,6 +262,25 @@ fun! FindImages() " [{lnum:int,filename:str}]
   return candidates
 endfun
 
+function! FindSegments(segments, width, start) abort
+  " Initialize the new segment positions
+  let new_seg_begin = a:start
+  let new_seg_end = new_seg_begin + a:width
+  " Iterate through the sorted segments to find a non-overlapping position
+  for seg in a:segments
+    let seg_begin = seg[0]
+    let seg_end = seg[1]
+    " Check if the new segment overlaps with the current segment
+    if new_seg_begin < seg_end && new_seg_end > seg_begin
+      " Move the new segment to the end of the current segment
+      let new_seg_begin = seg_end
+      let new_seg_end = new_seg_begin + a:width
+    endif
+  endfor
+  " Return the positions of the new segment
+  return new_seg_begin
+endfun
+
 fun! PopupTest2()
   let filename = "_parabola".".png"
   let [cols, rows] = PopupImageDims(filename, -1, -1)
@@ -271,13 +292,18 @@ endfun
 
 fun! PopupTest3()
   let left_margin = s:Get('terminal_images2_left_margin')
+  let segments = PopupOccupiedLines()
   for img in FindImages()
     let filename = img.filename
     let lnum = img.lnum
-    let [cols, rows] = PopupImageDims(filename, -1, -1)
 
-    let prop = PropGetOrCreate(lnum, filename)
-    let popup_id = PopupGetOrCreate(filename, prop, left_margin, prop.lnum, cols, rows)
+
+    let [cols, rows] = PopupImageDims(filename, -1, -1)
+    let new_start_pos = FindSegments(segments, rows, line("w0"))
+    let prop = PropGetOrCreate(new_start_pos, filename)
+
+    let popup_id = PopupGetOrCreate(filename, prop, left_margin, new_start_pos, cols, rows)
+    call add(segments, PopupOccupiedLines1(popup_id))
   endfor
 endfun
 
