@@ -18,7 +18,7 @@ endfun
 
 fun! PopupNextId()
   let b:terminal_images_propid_count =
-      \ get(b:, 'terminal_images_propid_count', 0) + 1
+        \ get(b:, 'terminal_images_propid_count', 0) + 1
   return b:terminal_images_propid_count
 endfun
 
@@ -29,10 +29,10 @@ fun! PopupCreateProp(lnum)
 	let prop_id = PopupNextId()
 	" let prop_id = 4444
 	call prop_add(a:lnum, 1, #{
-		\ length: 0,
-		\ type: g:terminal_images2_prop_type_name,
-		\ id: prop_id,
-		\ })
+        \ length: 0,
+        \ type: g:terminal_images2_prop_type_name,
+        \ id: prop_id,
+        \ })
   return prop_id
 endfun
 
@@ -42,22 +42,22 @@ fun! PopupCreate(col, row, cols, rows)
   let prop_id = PopupCreateProp(lnum)
 
   let background_higroup =
-      \ get(b:, 'local_background', 'TerminalImagesBackground')
+        \ get(b:, 'local_background', 'TerminalImagesBackground')
 
   " \ line: a:row,
 	let popup_id = popup_create('<popup>', #{
-    \ col: a:col - strdisplaywidth(getline(lnum)),
-		\ pos: 'topleft',
-    \ highlight: background_higroup,
-    \ fixed: 1,
-    \ flip: 0,
-    \ posinvert: 0,
-    \ minheight: a:rows, minwidth: a:cols,
-    \ maxheight: a:rows, maxwidth: a:cols,
-    \ zindex: 1000,
-		\ textprop: g:terminal_images2_prop_type_name,
-		\ textpropid: prop_id,
-		\ })
+        \ col: a:col,
+        \ pos: 'topleft',
+        \ highlight: background_higroup,
+        \ fixed: 1,
+        \ flip: 0,
+        \ posinvert: 0,
+        \ minheight: a:rows, minwidth: a:cols,
+        \ maxheight: a:rows, maxwidth: a:cols,
+        \ zindex: 1000,
+        \ textprop: g:terminal_images2_prop_type_name,
+        \ textpropid: prop_id,
+        \ })
   return popup_id
 endfun
 
@@ -69,10 +69,10 @@ fun! PopupUploadImage(popup_id, filename, cols, rows)
   let flags = ""
   try
     let text = terminal_images#UploadTerminalImage(a:filename,
-      \ {'cols': cols,
-      \  'rows': rows,
-      \  'flags': flags,
-      \ })
+          \ {'cols': cols,
+          \  'rows': rows,
+          \  'flags': flags,
+          \ })
 
     call popup_settext(a:popup_id, text)
   catch
@@ -98,12 +98,12 @@ fun! PopupImageDims(filename)
 
   let filename_esc = shellescape(a:filename)
   let command = g:terminal_images_command .
-              \ " --max-cols " . string(maxcols) .
-              \ " --max-rows " . string(maxrows) .
-              \ " --quiet " .
-              \ " -e /dev/null " .
-              \ " --only-dump-dims " .
-              \ filename_esc
+        \ " --max-cols " . string(maxcols) .
+        \ " --max-rows " . string(maxrows) .
+        \ " --quiet " .
+        \ " -e /dev/null " .
+        \ " --only-dump-dims " .
+        \ filename_esc
   silent let dims = split(system(command), " ")
   if v:shell_error != 0
     throw "Non-zero exit code: ".string(v:shell_error)
