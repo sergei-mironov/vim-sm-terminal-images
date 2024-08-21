@@ -1,4 +1,19 @@
 let g:terminal_images2_prop_type_name = 'terminalImagesPopup'
+if !exists('g:terminal_images2_command')
+  let g:terminal_images2_command = "tupimage"
+endif
+if !exists('g:terminal_images2_right_margin')
+  let g:terminal_images2_right_margin = 1
+endif
+if !exists('g:terminal_images2_left_margin')
+  let g:terminal_images2_left_margin = 100
+endif
+if !exists('g:terminal_images2_max_rows')
+  let g:terminal_images2_max_rows = 25
+endif
+if !exists('g:terminal_images2_max_columns')
+  let g:terminal_images2_max_columns = 80
+endif
 
 fun! s:Get(name) abort
   return get(b:, a:name, get(g:, a:name))
@@ -52,7 +67,7 @@ fun! PropCreate(lnum, url)
         \ id: prop_id,
         \ })
   echow "Created prop_id ".string(prop_id). " at lnum ".string(a:lnum)
-  return prop_id
+  return #{id:prop_id, lnum:a:lnum}
 endfun
 
 fun! PropGetOrCreate(lnum, url)
@@ -62,21 +77,21 @@ fun! PropGetOrCreate(lnum, url)
     return PropCreate(a:lnum, a:url)
   elseif len(props)==1
     echow "Found prop_id ".string(prop_id). " at lnum ".string(a:lnum)
-    return prop_id
+    return #{id:prop_id, lnum:a:lnum}
   else
     throw "Too many props in line".a:lnum
   endif
 endfun
 
-fun! PopupCreate(filename, prop_id, col, row, cols, rows)
-	let lnum = a:row
-
+fun! PopupCreate(filename, prop, col, row, cols, rows)
   let background_higroup =
-        \ get(b:, 'local_background', 'TerminalImagesBackground')
+        \ get(b:, 'terminal_images2_background', 'TerminalImagesBackground')
 
-  " \ line: a:row,
+  let left_margin = s:Get('terminal_images2_left_margin')
+
 	let popup_id = popup_create('<popup>', #{
-        \ col: a:col,
+        \ line: a:row-a:prop.lnum-1,
+        \ col: left_margin + a:col,
         \ pos: 'topleft',
         \ highlight: background_higroup,
         \ fixed: 1,
@@ -86,23 +101,46 @@ fun! PopupCreate(filename, prop_id, col, row, cols, rows)
         \ maxheight: a:rows, maxwidth: a:cols,
         \ zindex: 1000,
         \ textprop: g:terminal_images2_prop_type_name,
-        \ textpropid: a:prop_id,
+        \ textpropid: a:prop.id,
         \ })
-  echow "Created popup_id ". string(popup_id). " for prop_id ".string(a:prop_id)
+  echow "Created popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
   call PopupUploadImage(popup_id, a:filename, a:cols, a:rows)
   return popup_id
 endfun
 
-fun! PopupGetOrCreate(filename, prop_id, col, row, cols, rows)
+
+fun! PopupOccupiedLines1(popup_id) " tuple[int,int]|[]
+  let sline = line('w0')
+  let pos = popup_getpos(a:popup_id)
+  let opt = popup_getoptions(a:popup_id)
+  if get(opt, "textprop","") == g:terminal_images2_prop_type_name
+    return [sline+pos.line-1, sline+pos.line-1+opt.maxheight]
+  else
+    return []
+  endif
+endfun
+
+fun! PopupOccupiedLines() " list[tuple[int,int]]
+  let ret = []
+  for popup_id in popup_list()
+    let occupied = PopupOccupiedLines1(popup_id)
+    if len(occupied)>0
+      call add(ret, occupied)
+    endif
+  endfor
+  return ret
+endfun
+
+fun! PopupGetOrCreate(filename, prop, col, row, cols, rows)
   for popup_id in popup_list()
     let popup_opt = popup_getoptions(popup_id)
     echow "Checking popup_id".string(popup_id).": ".string(popup_opt)
-    if has_key(popup_opt, "textpropid") && popup_opt.textpropid == a:prop_id
-      echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop_id)
+    if has_key(popup_opt, "textpropid") && popup_opt.textpropid == a:prop.id
+      echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
       return popup_id
     endif
   endfor
-  let popup_id = PopupCreate(a:filename, a:prop_id, a:col, a:row, a:cols, a:rows)
+  let popup_id = PopupCreate(a:filename, a:prop, a:col, a:row, a:cols, a:rows)
   return popup_id
 endfun
 
@@ -125,24 +163,25 @@ fun! PopupUploadImage(popup_id, filename, cols, rows)
   endtry
 endfun
 
-if !exists('g:terminal_images_command')
-  let g:terminal_images_command =
-              \ s:path . "/../tupimage/tupimage"
-              " \ . " --less-diacritics"
-endif
-
-fun! PopupImageDims(filename)
+fun! PopupImageDims(filename, maxcols, maxrows)
   let win_width = s:GetWindowWidth()
-  let maxcols = s:Get('terminal_images_max_columns')
-  let maxrows = s:Get('terminal_images_max_rows')
-  let right_margin = s:Get('terminal_images_right_margin')
-  let maxcols = min([maxcols, &columns, win_width - right_margin])
+  let maxcols = s:Get('terminal_images2_max_columns')
+  let maxrows = s:Get('terminal_images2_max_rows')
+  let right_margin = s:Get('terminal_images2_right_margin')
+  let left_margin = s:Get('terminal_images2_left_margin')
+  let maxcols = min([maxcols, &columns, win_width - right_margin - left_margin])
   let maxrows = min([maxrows, &lines, winheight(0) - 2])
   let maxcols = max([1, maxcols])
   let maxrows = max([1, maxrows])
+  if a:maxcols>0
+    let maxcols = min([a:maxcols, maxcols])
+  endif
+  if a:maxrows>0
+    let maxrows = min([a:maxrows, maxrows])
+  endif
 
   let filename_esc = shellescape(a:filename)
-  let command = g:terminal_images_command .
+  let command = g:terminal_images2_command .
         \ " --max-cols " . string(maxcols) .
         \ " --max-rows " . string(maxrows) .
         \ " --quiet " .
@@ -151,7 +190,7 @@ fun! PopupImageDims(filename)
         \ filename_esc
   silent let dims = split(system(command), " ")
   if v:shell_error != 0
-    throw "Non-zero exit code: ".string(v:shell_error)
+    throw "Non-zero exit code: ".string(v:shell_error)." while checking ".filename_esc
   endif
   if len(dims) != 2
     throw "Unexpected output: ".string(dims)
@@ -162,11 +201,11 @@ fun! PopupImageDims(filename)
 endfun
 
 fun! PopupTest2()
-  let filename = "_parabola.png"
-  let [cols, rows] = PopupImageDims(filename)
+  let filename = "_parabola".".png"
+  let [cols, rows] = PopupImageDims(filename, -1, -1)
   let lnum = line('.')
 
-  let prop_id = PropGetOrCreate(lnum, filename)
-  let popup_id = PopupGetOrCreate(filename, prop_id, 101, lnum, cols, rows)
+  let prop = PropGetOrCreate(lnum, filename)
+  let popup_id = PopupGetOrCreate(filename, prop, 0, prop.lnum, cols, rows)
 endfun
 
