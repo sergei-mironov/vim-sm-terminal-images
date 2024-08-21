@@ -1,4 +1,4 @@
-let g:local_prop_type_name = 'terminalImagesPopup'
+let g:terminal_images2_prop_type_name = 'terminalImagesPopup'
 
 fun! s:Get(name) abort
   return get(b:, a:name, get(g:, a:name))
@@ -22,22 +22,25 @@ fun! PopupNextId()
   return b:terminal_images_propid_count
 endfun
 
-fun! PopupCreateProp(lnum, prop_id)
+fun! PopupCreateProp(lnum)
+  if empty(prop_type_get(g:terminal_images2_prop_type_name))
+    call prop_type_add(g:terminal_images2_prop_type_name, {})
+  endif
+	let prop_id = PopupNextId()
+	" let prop_id = 4444
 	call prop_add(a:lnum, 1, #{
-		\ length: len(getline(a:lnum)),
-		\ type: g:local_prop_type_name,
-		\ id: a:prop_id,
+		\ length: 0,
+		\ type: g:terminal_images2_prop_type_name,
+		\ id: prop_id,
 		\ })
+  return prop_id
 endfun
 
 fun! PopupCreate(col, row, cols, rows)
-  if empty(prop_type_get(g:local_prop_type_name))
-    call prop_type_add(g:local_prop_type_name, {})
-  endif
 	let lnum = a:row
-	" let prop_id = PopupNextId()
-	let prop_id = 4444
-  call PopupCreateProp(lnum, prop_id)
+
+  let prop_id = PopupCreateProp(lnum)
+
   let background_higroup =
       \ get(b:, 'local_background', 'TerminalImagesBackground')
 
@@ -52,7 +55,7 @@ fun! PopupCreate(col, row, cols, rows)
     \ minheight: a:rows, minwidth: a:cols,
     \ maxheight: a:rows, maxwidth: a:cols,
     \ zindex: 1000,
-		\ textprop: g:local_prop_type_name,
+		\ textprop: g:terminal_images2_prop_type_name,
 		\ textpropid: prop_id,
 		\ })
   return popup_id
