@@ -14,6 +14,9 @@ endif
 if !exists('g:terminal_images2_max_columns')
   let g:terminal_images2_max_columns = 80
 endif
+if !exists('g:terminal_images2_regex')
+  let g:terminal_images2_regex = '\c\([a-z0-9_+=/$%-]\+\.\(png\|jpe\?g\|gif\)\)'
+endif
 
 fun! s:Get(name) abort
   return get(b:, a:name, get(g:, a:name))
@@ -109,7 +112,7 @@ fun! PopupCreate(filename, prop, col, row, cols, rows)
 endfun
 
 
-fun! PopupOccupiedLines1(popup_id) " tuple[int,int]|[]
+fun! PopupOccupiedLines1(popup_id) " [int,int]|[]
   let sline = line('w0')
   let pos = popup_getpos(a:popup_id)
   let opt = popup_getoptions(a:popup_id)
@@ -120,7 +123,7 @@ fun! PopupOccupiedLines1(popup_id) " tuple[int,int]|[]
   endif
 endfun
 
-fun! PopupOccupiedLines() " list[tuple[int,int]]
+fun! PopupOccupiedLines() " [[int,int]]
   let ret = []
   for popup_id in popup_list()
     let occupied = PopupOccupiedLines1(popup_id)
@@ -200,6 +203,52 @@ fun! PopupImageDims(filename, maxcols, maxrows)
   return [cols, rows]
 endfun
 
+fun! GetReadableFile(filename) " str|''
+  " Try the current directory and the directory of the current file.
+  let filenames = [a:filename, expand('%:p:h') . "/" . a:filename]
+  " Try the current netrw directory.
+  if exists('b:netrw_curdir')
+    call add(filenames, b:netrw_curdir . "/" . a:filename)
+  endif
+  for filename in filenames
+    if filereadable(filename)
+      return filename
+    endif
+  endfor
+  " In subdirectories of the directory of the current file (descend one level by default).
+  let globpattern = expand('%:p:h') .
+              \ "/" . s:Get('terminal_images_subdir_glob') . "/" . a:filename
+  let globlist = glob(globpattern, 0, 1)
+  for filename in globlist
+    if filereadable(filename)
+      return filename
+    endif
+  endfor
+  return ""
+endfun
+
+fun! FindImages() " [{lnum:int,filename:str}]
+  let candidates = []
+  for lnum in range(line('w0'), line('w$'))
+     if lnum < 1
+       continue
+     endif
+     let line_str = getline(lnum)
+     if len(candidates) >= 32
+       continue
+     endif
+     let matches = []
+     call substitute(line_str, s:Get('terminal_images2_regex'), '\=add(matches, submatch(1))', 'g')
+     for m in matches
+       let filename = GetReadableFile(m)
+       if len(filename)>0
+         call add(candidates, #{lnum:lnum, filename:filename})
+       endif
+     endfor
+  endfor
+  return candidates
+endfun
+
 fun! PopupTest2()
   let filename = "_parabola".".png"
   let [cols, rows] = PopupImageDims(filename, -1, -1)
@@ -207,5 +256,16 @@ fun! PopupTest2()
 
   let prop = PropGetOrCreate(lnum, filename)
   let popup_id = PopupGetOrCreate(filename, prop, 0, prop.lnum, cols, rows)
+endfun
+
+fun! PopupTest3()
+  for img in FindImages()
+    let filename = img.filename
+    let lnum = img.lnum
+    let [cols, rows] = PopupImageDims(filename, -1, -1)
+
+    let prop = PropGetOrCreate(lnum, filename)
+    let popup_id = PopupGetOrCreate(filename, prop, 0, prop.lnum, cols, rows)
+  endfor
 endfun
 
