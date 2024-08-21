@@ -131,7 +131,14 @@ fun! PopupOccupiedLines() " [[int,int]]
       call add(ret, occupied)
     endif
   endfor
-  return ret
+  fun! s:Compare(a,b)
+    if a:a[0]!=a:b[0]
+      return a:a[0]>a:b[0]
+    else
+      return a:a[1]>a:b[1]
+    endif
+  endfun
+  return sort(ret, "s:Compare")
 endfun
 
 fun! PopupGetOrCreate(filename, prop, col, row, cols, rows)
