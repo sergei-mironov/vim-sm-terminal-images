@@ -1,6 +1,6 @@
 CWD=`pwd`
 export PROJECT_SOURCE="$CWD"
-export VIM_PLUGINS="$CWD"
+export VIM_PLUGINS="$CWD/vim"
 export TUPIMAGE_UPLOADING_METHOD=file
 
 update_pathvar() {
@@ -12,6 +12,6 @@ update_pathvar() {
     esac
 }
 
-update_pathvar "PATH" "$CWD/_sh"
+update_pathvar "PATH" "$CWD/sh"
 
 
