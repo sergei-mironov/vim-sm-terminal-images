@@ -97,7 +97,7 @@ endfun
 
 fun! terminal_images2#PopupCreate(img, prop, col, row, cols, rows)
   let background_higroup =
-        \ get(b:, 'terminal_images2_background', 'TerminalImagesBackground')
+        \ get(b:, 'terminal_images2_background', 'TerminalImages2Background')
 
 	let popup_id = popup_create('', #{
         \ line: a:row-a:prop.lnum-1,
@@ -388,3 +388,49 @@ fun! terminal_images2#UpdateScreen()
   call terminal_images2#Update(line('w0'),line('w$'))
 endfun
 
+fun! terminal_images2#ShowImageUnderCursor(...) abort
+  let silent = get(a:, 0, 0)
+  try
+    let filename = terminal_images2#GetReadableFile(expand('<cfile>'))
+  catch
+    if !silent
+      echohl ErrorMsg
+      echo v:exception
+      echohl None
+    endif
+    return 0
+  endtry
+  if !filereadable(filename)
+    return
+  endif
+  if !silent
+    let uploading_popup =
+                  \ popup_atcursor("Uploading " . filename, {'zindex': 1010})
+  endif
+  redraw
+  echo "Uploading " . filename
+  try
+    let text = terminal_images#UploadTerminalImage(filename, {})
+    redraw
+    echo "Showing " . filename
+  catch
+    if !silent
+      call popup_close(uploading_popup)
+    endif
+    " Vim doesn't want to redraw unless I put echo in between
+    redraw!
+    echo
+    redraw!
+    echohl ErrorMsg
+    echo v:exception
+    echohl None
+    return
+  endtry
+  if !silent
+    call popup_close(uploading_popup)
+  endif
+  let background_higroup =
+              \ get(b:, 'terminal_images_background', 'TerminalImagesBackground')
+  return popup_atcursor(text,
+              \ #{wrap: 0, highlight: background_higroup, zindex: 1000})
+endfun
