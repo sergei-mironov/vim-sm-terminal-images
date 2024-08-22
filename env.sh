@@ -1,6 +1,6 @@
 CWD=`pwd`
 export PROJECT_SOURCE="$CWD"
-export VIM_PLUGINS="$CWD/vim"
+export VIM_PLUGINS="$CWD/vim_dev,$CWD/vim"
 export TUPIMAGE_UPLOADING_METHOD=file
 
 update_pathvar() {
