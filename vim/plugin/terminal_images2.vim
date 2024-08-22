@@ -19,6 +19,12 @@ endif
 if !exists('g:terminal_images2_regex')
   let g:terminal_images2_regex = '\c\([a-z0-9_+=/$%-]\+\.\(png\|jpe\?g\|gif\)\)'
 endif
+" Highlight group used for floating window background. The background can also
+" be controlled in per-buffer manner by setting `b:terminal_images_background`.
+if !hlexists('TerminalImages2Background')
+  highlight link TerminalImages2Background Pmenu
+endif
+
 if !exists(":TI2UpdateScreen")
   command! -bar -nargs=0 TI2UpdateScreen call terminal_images2#UpdateScreen()
 endif
