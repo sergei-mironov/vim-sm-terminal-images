@@ -1,4 +1,4 @@
-let g:terminal_images2_prop_type_name = 'terminalImagesPopup'
+let g:terminal_images2_prop_type_name = 'TerminalImages2Popup'
 if !exists('g:terminal_images2_command')
   let g:terminal_images2_command = "tupimage"
 endif
@@ -32,12 +32,6 @@ endfun
 
 fun! s:GetWindowWidth() abort
   return winwidth(0) - s:GetDecorationWidth()
-endfun
-
-fun! PropNextId()
-  let b:terminal_images2_propid_count =
-        \ get(b:, 'terminal_images2_propid_count', 0) + 1
-  return b:terminal_images2_propid_count
 endfun
 
 fun! SearchWithinRange(pat, lstart, lstop)
@@ -379,15 +373,14 @@ fun! PopupFindOutdated(lstart, lstop) " [popup_id]
         \ a:lstart, a:lstop)
 endfun
 
-fun! Test3()
+fun! Update(line_start, line_stop)
+  let [line_start, line_stop] = [a:line_start, a:line_stop]
   let left_margin = s:Get('terminal_images2_left_margin')
-  let excluded = []
-  let [line_start, line_stop] = [line('w0'),line('w$')]
+
   let images = FindImages(line_start, line_stop)
   let all_popup_ids = PopupFindWithin(line_start, line_stop)
   let modified_popup_ids = []
-
-  let segments = [] " PopupOccupiedLines_(popup_ids, line_start, line_stop)
+  let segments = []
   for img in images
     let [cols, rows] = PopupImageDims(img.filename, -1, -1)
     let new_start_pos = PositionSegment(segments, rows, line_start)
@@ -409,3 +402,6 @@ fun! Test3()
   endfor
 endfun
 
+fun! UpdateScreen()
+  call Update(line('w0'),line('w$'))
+endfun
