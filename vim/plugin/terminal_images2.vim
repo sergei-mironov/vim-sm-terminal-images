@@ -110,7 +110,7 @@ fun! PropCreate(img, lnum, prop_id) " prop
         \ type: g:terminal_images2_prop_type_name,
         \ id: prop_id,
         \ })
-  echow "Created prop_id ".string(prop_id). " at lnum ".string(lnum)
+  " echow "Created prop_id ".string(prop_id). " at lnum ".string(lnum)
 
   let prop = #{id:prop_id, lnum:lnum}
   return prop
@@ -128,7 +128,7 @@ fun! PropGetOrCreate(img, lnum)
   if len(props)==0
     return PropCreate(a:img, lnum, prop_id)
   elseif len(props)==1
-    echow "Found prop_id ".string(prop_id). " at lnum ".string(lnum)
+    " echow "Found prop_id ".string(prop_id). " at lnum ".string(lnum)
     return #{id:prop_id, lnum:lnum}
   else
     throw "Too many props in line".lnum
@@ -155,7 +155,7 @@ fun! PopupCreate(img, prop, col, row, cols, rows)
         \ textpropid: a:prop.id,
         \ })
   call setbufvar(winbufnr(popup_id), "filename", a:img.filename)
-  echow "Created popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
+  " echow "Created popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
   call PopupUploadImage(popup_id, a:img.filename, a:cols, a:rows)
   return popup_id
 endfun
@@ -204,10 +204,10 @@ endfun
 fun! PopupGetOrCreate(img, prop, col, row, cols, rows)
   for popup_id in popup_list()
     let opt = popup_getoptions(popup_id)
-    echow "Checking popup_id".string(popup_id).": ".string(opt)
+    " echow "Checking popup_id".string(popup_id).": ".string(opt)
     if has_key(opt, "textpropid") && opt.textpropid == a:prop.id
       if opt.maxwidth==a:cols && opt.maxheight==a:rows
-        echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
+        " echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
         call popup_move(popup_id, #{line:a:row-a:prop.lnum-1})
         let pos = popup_getpos(popup_id)
         if !pos.visible
@@ -216,7 +216,7 @@ fun! PopupGetOrCreate(img, prop, col, row, cols, rows)
         return popup_id
       else
         call popup_close(popup_id)
-        echow "Re-creating popup for prop_id ".string(a:prop.id)
+        " echow "Re-creating popup for prop_id ".string(a:prop.id)
         break
       endif
     endif
@@ -227,7 +227,7 @@ endfun
 
 fun! PopupUploadImage(popup_id, filename, cols, rows)
   let props = popup_getpos(a:popup_id)
-  echow string(props)
+  " echow string(props)
   let cols = a:cols
   let rows = a:rows
   let flags = ""
@@ -389,15 +389,9 @@ fun! Test3()
   let excluded = []
   let [line_start, line_stop] = [line('w0'),line('w$')]
   let images = FindImages(line_start, line_stop)
-  let popup_ids = PopupFindWithin(line_start, line_stop)
-  " for popup_id in PopupFindOutdated_(popup_ids, images, line_start, line_stop)
-  "   echow "Closing outdated ". string(popup_id)
-  "   call popup_close(popup_id)
-  "   call remove(popup_ids, popup_id)
-  " endfor
-  for popup_id in popup_ids
-    call popup_close(popup_id)
-  endfor
+  let all_popup_ids = PopupFindWithin(line_start, line_stop)
+  let modified_popup_ids = []
+
   let segments = [] " PopupOccupiedLines_(popup_ids, line_start, line_stop)
   for img in images
     let [cols, rows] = PopupImageDims(img.filename, -1, -1)
@@ -409,7 +403,13 @@ fun! Test3()
       if len(seg)>0
         call add(segments, seg)
         let segments = sort(segments, "s:Compare")
+        call add(modified_popup_ids, popup_id)
       endif
+    endif
+  endfor
+  for popup_id in all_popup_ids
+    if count(modified_popup_ids, popup_id)==0
+      call popup_close(popup_id)
     endif
   endfor
 endfun
