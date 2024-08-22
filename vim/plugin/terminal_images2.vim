@@ -84,27 +84,12 @@ fun! PropGetIdByUrl(lnum, url)
   return str2nr(hash, 16)
 endfun
 
-
-" fun! PropCreateOrGetId(url)
-"   let b:terminal_images2_url2prop = get(b:, 'terminal_images2_url2prop', {})
-"   if has_key(b:terminal_images2_url2prop, a:url)
-"     let prop_id = b:terminal_images2_url2prop[a:url]
-"   else
-"     let prop_id = PropNextId()
-"     let b:terminal_images2_url2prop[a:url] = prop_id
-"   endif
-"   return prop_id
-" endfun
-
-let b:terminal_images2_prop2line = {}
-
 fun! PropCreate(img, lnum, prop_id) " prop
 	let prop_id = a:prop_id
   let [lnum, url] = [a:lnum, a:img.url]
   if empty(prop_type_get(g:terminal_images2_prop_type_name))
     call prop_type_add(g:terminal_images2_prop_type_name, {})
   endif
-	" let prop_id = 4444
 	call prop_add(lnum, 1, #{
         \ length: 0,
         \ type: g:terminal_images2_prop_type_name,
@@ -244,6 +229,8 @@ fun! PopupUploadImage(popup_id, filename, cols, rows)
   endtry
 endfun
 
+let g:terminal_images2_dim_cache = {}
+
 fun! PopupImageDims(filename, maxcols, maxrows)
   let win_width = s:GetWindowWidth()
   let maxcols = s:Get('terminal_images2_max_columns')
@@ -269,16 +256,24 @@ fun! PopupImageDims(filename, maxcols, maxrows)
         \ " -e /dev/null " .
         \ " --only-dump-dims " .
         \ filename_esc
-  silent let dims = split(system(command), " ")
-  if v:shell_error != 0
-    throw "Non-zero exit code: ".string(v:shell_error)." while checking ".filename_esc
+
+  let cached_dims = get(g:terminal_images2_dim_cache, command, [])
+  if len(cached_dims)>0
+    let res = cached_dims
+  else
+    silent let dims = split(system(command), " ")
+    if v:shell_error != 0
+      throw "Non-zero exit code: ".string(v:shell_error)." while checking ".filename_esc
+    endif
+    if len(dims) != 2
+      throw "Unexpected output: ".string(dims)
+    endif
+    let cols = str2nr(dims[0])
+    let rows = str2nr(dims[1])
+    let res = [cols, rows]
+    let g:terminal_images2_dim_cache[command] = res
   endif
-  if len(dims) != 2
-    throw "Unexpected output: ".string(dims)
-  endif
-  let cols = str2nr(dims[0])
-  let rows = str2nr(dims[1])
-  return [cols, rows]
+  return res
 endfun
 
 fun! GetReadableFile(filename) " str|''
