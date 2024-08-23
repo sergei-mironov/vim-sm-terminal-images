@@ -1,5 +1,8 @@
+fun! s:GetDef(name, def) abort
+  return get(b:, a:name, get(g:, a:name, a:def))
+endfun
 fun! s:Get(name) abort
-  return get(b:, a:name, get(g:, a:name))
+  return s:GetDef(a:name, 0)
 endfun
 
 " https://stackoverflow.com/questions/26315925/get-usable-window-width-in-vim-script
@@ -97,7 +100,7 @@ endfun
 
 fun! terminal_images2#PopupCreate(img, prop, col, row, cols, rows)
   let background_higroup =
-        \ get(b:, 'terminal_images2_background', 'TerminalImages2Background')
+        \ s:GetDef('terminal_images2_background', 'TerminalImages2Background')
 
 	let popup_id = popup_create('', #{
         \ line: a:row-a:prop.lnum-1,
@@ -169,6 +172,7 @@ fun! terminal_images2#PopupGetOrCreate(img, prop, col, row, cols, rows)
       if opt.maxwidth==a:cols && opt.maxheight==a:rows
         " echow "Found popup_id ". string(popup_id). " for prop_id ".string(a:prop.id)
         call popup_move(popup_id, #{line:a:row-a:prop.lnum-1})
+        call popup_show(popup_id)
         let pos = popup_getpos(popup_id)
         if !pos.visible
           call popup_show(popup_id)
@@ -186,16 +190,13 @@ fun! terminal_images2#PopupGetOrCreate(img, prop, col, row, cols, rows)
 endfun
 
 fun! terminal_images2#PopupUploadImage(popup_id, filename, cols, rows)
-  let props = popup_getpos(a:popup_id)
   " echow string(props)
-  let cols = a:cols
-  let rows = a:rows
-  let flags = ""
+  let [filename, cols, rows] = [a:filename, a:cols, a:rows]
   try
-    let text = terminal_images#UploadTerminalImage(a:filename,
+    let text = terminal_images2#UploadTerminalImage(filename,
           \ {'cols': cols,
           \  'rows': rows,
-          \  'flags': flags,
+          \  'flags': ""
           \ })
 
     call popup_settext(a:popup_id, text)
@@ -265,7 +266,7 @@ fun! terminal_images2#GetReadableFile(filename) " str|''
   endfor
   " In subdirectories of the directory of the current file (descend one level by default).
   let globpattern = expand('%:p:h') .
-              \ "/" . s:Get('terminal_images_subdir_glob') . "/" . a:filename
+              \ "/" . s:Get('terminal_images2_subdir_glob') . "/" . a:filename
   let globlist = glob(globpattern, 0, 1)
   for filename in globlist
     if filereadable(filename)
@@ -379,16 +380,16 @@ fun! terminal_images2#Update(line_start, line_stop)
   endfor
   for popup_id in all_popup_ids
     if count(modified_popup_ids, popup_id)==0
-      call popup_close(popup_id)
+      call popup_hide(popup_id)
     endif
   endfor
 endfun
 
-fun! terminal_images2#UpdateScreen()
+fun! terminal_images2#UpdateVisible()
   call terminal_images2#Update(line('w0'),line('w$'))
 endfun
 
-fun! terminal_images2#ShowImageUnderCursor(...) abort
+fun! terminal_images2#ShowUnderCursor(...) abort
   let silent = get(a:, 0, 0)
   try
     let filename = terminal_images2#GetReadableFile(expand('<cfile>'))
@@ -430,7 +431,101 @@ fun! terminal_images2#ShowImageUnderCursor(...) abort
     call popup_close(uploading_popup)
   endif
   let background_higroup =
-              \ get(b:, 'terminal_images_background', 'TerminalImagesBackground')
+              \ s:GetDef('terminal_images2_background', 'TerminalImages2Background')
   return popup_atcursor(text,
               \ #{wrap: 0, highlight: background_higroup, zindex: 1000})
+endfun
+
+" Upload the given image with the given size. If `cols` and `rows` are zero, the
+" best size will be computed automatically.
+" The result of this function is a list of lines with text properties
+" representing the image (can be used with popup_create and popup_settext).
+function! terminal_images2#UploadTerminalImage(filename, params) abort
+  let cols = get(a:params, 'cols', 0)
+  let rows = get(a:params, 'rows', 0)
+  let flags = get(a:params, 'flags', '')
+  " If the number of columns and rows is not provided, the script will compute
+  " them automatically. We just need to limit the number of columns and rows
+  " so that the image fits in the window.
+  let maxcols = s:Get('terminal_images2_max_columns')
+  let maxrows = s:Get('terminal_images2_max_rows')
+  let right_margin = s:Get('terminal_images2_right_margin')
+  let maxcols = min([maxcols, &columns, s:GetWindowWidth() - right_margin])
+  let maxrows = min([maxrows, &lines, winheight(0) - 2])
+  let maxcols = max([1, maxcols])
+  let maxrows = max([1, maxrows])
+  let maxcols_str = cols ? "" : " --max-cols " . string(maxcols)
+  let maxrows_str = rows ? "" : " --max-rows " . string(maxrows)
+  let cols_str = cols ? " -c " . shellescape(string(cols)) : ""
+  let rows_str = rows ? " -r " . shellescape(string(rows)) : ""
+  let filename_expanded = resolve(expand(a:filename))
+  let filename_str = shellescape(filename_expanded)
+  let outfile = tempname()
+  let errfile = tempname()
+  let infofile = tempname()
+  try
+    " We use tupimage to upload the file. We ask it to write lines
+    " representing the image to `outfile` and disable outputting escape codes
+    " for the image id (--noesc) because we assign them by ourselves using text
+    " properties.
+    let command = g:terminal_images2_command .
+          \ cols_str .
+          \ rows_str .
+          \ maxcols_str .
+          \ maxrows_str .
+          \ " -o " . shellescape(outfile) .
+          \ " --save-info " . shellescape(infofile) .
+          \ " --noesc " .
+          \ " --256 " .
+          \ " --quiet " .
+          \ flags .
+          \ " " . filename_str .
+          \ " 2> " . shellescape(errfile)
+    call system(command)
+    if v:shell_error != 0
+      if filereadable(errfile)
+        let err_message = readfile(errfile)[0]
+        throw "Error: " . err_message . "  Command: " . command
+      endif
+      throw "Command failed: " . command
+    endif
+
+    " Get image id from infofile.
+    let id = ''
+    for infoline in readfile(infofile)
+      " The line we want looks something like "id 1234"
+      let id = matchstr(infoline, '^id[ \t]\+\zs[0-9]\+\ze$')
+      if id != ''
+        break
+      endif
+    endfor
+    if id == ''
+      throw "Could not read id from " . infofile
+    endif
+
+    " Read outfile and convert it to something suitable for floating windows.
+    let lines = readfile(outfile)
+    let result = []
+    " We use text properties to assign each line the foreground color
+    " corresponding to the image id.
+    let prop_type = "TerminalImages2ID" . id
+    for line in lines
+      call add(result,
+            \ {'text': line,
+            \  'props': [{'col': 1,
+            \             'length': len(line),
+            \             'type': prop_type}]})
+    endfor
+  finally
+    if filereadable(errfile)
+      call delete(errfile)
+    endif
+    if filereadable(infofile)
+      call delete(infofile)
+    endif
+    if filereadable(outfile)
+      call delete(outfile)
+    endif
+  endtry
+  return result
 endfun
