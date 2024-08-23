@@ -21,7 +21,7 @@ The top-level definitions are:
 Hints
 -----
 
-* It makes sense to perform updates on the cursor hold event:
+* It makes sense to define CursorHold event somewhere in the user configuration file:
   ``` vim
   autocmd CursorHold,BufWinEnter * call terminal_images2#UpdateVisible()
   ```
