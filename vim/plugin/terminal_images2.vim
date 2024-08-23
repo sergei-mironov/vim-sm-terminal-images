@@ -41,6 +41,6 @@ for i in range(1, 255)
   call prop_type_add(prop_name, {'highlight': higroup_name})
 endfor
 
-if !exists(":TI2UpdateScreen")
-  command! -bar -nargs=0 TI2UpdateScreen call terminal_images2#UpdateScreen()
+if !exists(":TI2UpdateVisible")
+  command! -bar -nargs=0 TI2UpdateVisible call terminal_images2#UpdateVisible()
 endif
