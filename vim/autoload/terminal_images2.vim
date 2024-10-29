@@ -207,7 +207,7 @@ endfun
 
 let g:terminal_images2_dim_cache = {}
 
-fun! terminal_images2#PopupImageDims(filename, maxcols, maxrows)
+fun! terminal_images2#PopupImageDims(filename, maxcols, maxrows) " -> [int,int]|v:null
   let win_width = s:GetWindowWidth()
   let maxcols = s:Get('terminal_images2_max_columns')
   let maxrows = s:Get('terminal_images2_max_rows')
@@ -215,13 +215,16 @@ fun! terminal_images2#PopupImageDims(filename, maxcols, maxrows)
   let left_margin = s:Get('terminal_images2_left_margin')
   let maxcols = min([maxcols, &columns, win_width - right_margin - left_margin])
   let maxrows = min([maxrows, &lines, winheight(0) - 2])
-  let maxcols = max([1, maxcols])
-  let maxrows = max([1, maxrows])
+  let maxcols = max([0, maxcols])
+  let maxrows = max([0, maxrows])
   if a:maxcols>0
     let maxcols = min([a:maxcols, maxcols])
   endif
   if a:maxrows>0
     let maxrows = min([a:maxrows, maxrows])
+  endif
+  if maxcols==0 || maxrows==0
+    return v:null
   endif
 
   let filename_esc = shellescape(a:filename)
@@ -365,7 +368,11 @@ fun! terminal_images2#Update(line_start, line_stop)
   let modified_popup_ids = []
   let segments = []
   for img in images
-    let [cols, rows] = terminal_images2#PopupImageDims(img.filename, -1, -1)
+    let pos = terminal_images2#PopupImageDims(img.filename, -1, -1)
+    if pos == v:null
+      continue
+    endif
+    let [cols, rows] = pos
     let new_start_pos = terminal_images2#PositionSegment(segments, rows, line_start)
     if new_start_pos <= line_stop
       let prop = terminal_images2#PropGetOrCreate(img, new_start_pos)
