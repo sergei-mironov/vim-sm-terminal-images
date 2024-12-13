@@ -30,6 +30,12 @@ The plugin is disabled by default. To enable it, put the following line into you
 autocmd CursorHold,BufWinEnter * call sm_terminal_images#UpdateVisible()
 ```
 
+To enable displaying images under cursor by `gi` command, add also the following:
+
+``` vim
+nnoremap gi <Esc>:call sm_terminal_images#ShowUnderCursor()<CR>
+```
+
 Details
 -------
 
