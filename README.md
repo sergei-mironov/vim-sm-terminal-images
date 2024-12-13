@@ -14,17 +14,24 @@ The differences include:
 Usage
 -----
 
-The plugin requires a terminal (non-GUI) Vim running in a terminal which supports extentions for
-graphic.  We are aware of the following terminals matching this requirement:
-- [Kitty Terminal](https://sw.kovidgoyal.net/kitty/)
-- [Simple Terminal](https://st.suckless.org/), namely its [Kitty graphics protocol
-  branch](https://github.com/sergei-grechanik/st-graphics) (the preferred and the only tested
-  terminal)
+This plugin requires the following software:
+
+1. [tupiamge](https://github.com/sergei-grechanik/tupimage) terminal graphics tool by Sergei
+   Grechanik.
+
+2. A terminal supporting the Kitty graphics protocol. We are aware of the following terminals
+   matching this requirement:
+   - [Kitty Terminal](https://sw.kovidgoyal.net/kitty/) itself.
+   - [Simple Terminal](https://st.suckless.org/), namely its [Kitty graphics protocol
+     branch](https://github.com/sergei-grechanik/st-graphics) (the preferred and the only tested
+     terminal).
+   - Refer to the `tupimage` page for more possible options.
 
 The plugin provides a function for scanning text for image file names whenever the cursor is idle.
-Once detected, the images are displayed in the right column.
+Once detected, the images are displayed in one column near the right border of the screen.
 
-The plugin is disabled by default. To enable it, put the following line into your `.vimrc` config:
+The plugin only publishes a few top-level functions. To use them, put the following line into your
+`.vimrc` config:
 
 ``` vim
 autocmd CursorHold,BufWinEnter * call sm_terminal_images#UpdateVisible()
@@ -35,13 +42,4 @@ To enable displaying images under cursor by `gi` command, add also the following
 ``` vim
 nnoremap gi <Esc>:call sm_terminal_images#ShowUnderCursor()<CR>
 ```
-
-Details
--------
-
-The top-level definitions are:
-- `sm_terminal_images#UpdateVisible()` for updating images for links visible on the screen. The
-  corresponding vim command is `:SMTIUpdateVisible`.
-- `sm_terminal_images#ShowUnderCursor()` for showing image under the cursor
-
 
