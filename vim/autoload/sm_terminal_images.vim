@@ -281,6 +281,7 @@ endfun
 
 fun! sm_terminal_images#FindImages(lstart, lstop) " [{lnum:int, url:str, filename:str, prop_id:int}]
   let candidates = []
+  let seen_filenames = {} " Dictionary to track seen filenames
   for lnum in range(a:lstart, a:lstop)
      if lnum < 1
        continue
@@ -293,10 +294,11 @@ fun! sm_terminal_images#FindImages(lstart, lstop) " [{lnum:int, url:str, filenam
      call substitute(line_str, s:Get('sm_terminal_images_regex'), '\=add(matches, submatch(1))', 'g')
      for m in matches
        let filename = sm_terminal_images#GetReadableFile(m)
-       if len(filename)>0
+       if len(filename)>0 && !has_key(seen_filenames, filename) " Check if the filename is new
          call add(candidates,
                \ #{lnum:lnum, url:m, filename:filename,
                \ prop_id:sm_terminal_images#PropGetIdByUrl(lnum, m)})
+         let seen_filenames[filename] = 1 " Mark this filename as seen
        endif
      endfor
   endfor
