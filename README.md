@@ -1,5 +1,5 @@
-SM Terinal Images
------------------
+SM Terminal Images
+------------------
 
 This project is an experimental rework of the
 [vim-terminal-images](https://github.com/sergei-grechanik/vim-terminal-images) Vim plugin by Sergei
