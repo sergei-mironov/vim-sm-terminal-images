@@ -22,9 +22,9 @@ This plugin requires the following software to be installed:
 2. A terminal supporting the Kitty graphics protocol. We are aware of the following terminals
    matching this requirement:
    - [Kitty Terminal](https://sw.kovidgoyal.net/kitty/) itself.
-   - [Simple Terminal](https://st.suckless.org/), namely its [Kitty graphics protocol
-     branch](https://github.com/sergei-grechanik/st-graphics) (the preferred and the only tested
-     terminal).
+   - [Simple Terminal](https://st.suckless.org/), namely, this [Kitty graphics protocol
+     branch](https://github.com/sergei-grechanik/st-graphics) (the author tested this terminal
+     only).
    - Refer to the `tupimage` page for more possible options.
 
 The plugin provides a function for scanning text for image file names whenever the cursor is idle.
