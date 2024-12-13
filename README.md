@@ -6,15 +6,15 @@ This project is an experimental rework of the
 Grechanik.
 
 The differences include:
-- A simpler one-column image positioning algorithm
-- More aggressive preservation of vim resources (properties, popup windows)
-- Quiet image uploading to work around problems caused by the `tupimage` statusline
-- No built-in CursorHold handler and fewer Vim commands are installed
+- A simpler one-column image positioning algorithm.
+- Preservation of vim resources (text properties, popup windows).
+- Quiet image uploading to work around problems caused by the `tupimage` statusline.
+- No built-in key mappings or event handlers are installed.
 
 Usage
 -----
 
-This plugin requires the following software:
+This plugin requires the following software to be installed:
 
 1. [tupiamge](https://github.com/sergei-grechanik/tupimage) terminal graphics tool by Sergei
    Grechanik.
