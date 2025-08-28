@@ -421,7 +421,7 @@ fun! sm_terminal_images#ShowUnderCursor(...) abort
   redraw
   echo "Uploading " . filename
   try
-    let text = terminal_images#UploadTerminalImage(filename, {})
+    let text = sm_terminal_images#UploadTerminalImage(filename, {})
     redraw
     echo "Showing " . filename
   catch
