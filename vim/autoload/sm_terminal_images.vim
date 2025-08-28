@@ -234,7 +234,7 @@ fun! sm_terminal_images#PopupImageDims(filename, maxcols, maxrows) " -> [int,int
         \ " --quiet " .
         \ " -e /dev/null " .
         \ " --only-dump-dims " .
-        \ filename_esc
+        \ filename_esc .
         \ " 2>/dev/null"
 
   let cached_dims = get(g:sm_terminal_images_dim_cache, command, [])
