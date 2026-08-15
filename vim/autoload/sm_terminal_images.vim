@@ -55,10 +55,10 @@ fun! sm_terminal_images#SearchWindowBackward(pat, winsz, lbegin)
   return res
 endfun
 
-fun! sm_terminal_images#PropGetIdByUrl(lnum, url)
-  let [lnum, url] = [a:lnum, a:url]
+fun! sm_terminal_images#PropGetIdByUrl(lnum, url, content_hash)
+  let [lnum, url, ch] = [a:lnum, a:url, a:content_hash]
   let matches = sm_terminal_images#SearchWindowBackward(url, 20, lnum)
-  let hash = sha256(url.'-'.string(len(matches)))[:6]
+  let hash = sha256(url.'-'.string(len(matches)).'-'.ch)[:6]
   return str2nr(hash, 16)
 endfun
 
@@ -280,6 +280,23 @@ fun! sm_terminal_images#GetReadableFile(filename) " str|''
   return ""
 endfun
 
+fun! sm_terminal_images#QuickContentHash(filename) " str|v:null
+    " Returns md5 hash of at most first 4096 bytes of a:filename. (a)
+    " If the file cannot be read, returns an empty string. (b)
+    try
+        let l:blob = readblob(a:filename, 0, 16*1024)
+    catch
+        return v:null
+    endtry
+
+    if empty(l:blob)
+        return v:null
+    endif
+    let sha = sha256(blob)
+    " echomsg "filename ".a:filename." sha ".sha
+    return sha
+endfun
+
 fun! sm_terminal_images#FindImages(lstart, lstop) " [{lnum:int, url:str, filename:str, prop_id:int}]
   let candidates = []
   let seen_filenames = {} " Dictionary to track seen filenames
@@ -296,9 +313,13 @@ fun! sm_terminal_images#FindImages(lstart, lstop) " [{lnum:int, url:str, filenam
      for m in matches
        let filename = sm_terminal_images#GetReadableFile(m)
        if len(filename)>0 && !has_key(seen_filenames, filename) " Check if the filename is new
+         let qch = sm_terminal_images#QuickContentHash(filename)
          call add(candidates,
-               \ #{lnum:lnum, url:m, filename:filename,
-               \ prop_id:sm_terminal_images#PropGetIdByUrl(lnum, m)})
+               \ #{lnum:lnum,
+               \ url:m,
+               \ filename:filename,
+               \ prop_id:sm_terminal_images#PropGetIdByUrl(lnum, m, qch)
+               \ })
          let seen_filenames[filename] = 1 " Mark this filename as seen
        endif
      endfor
