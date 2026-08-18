@@ -22,6 +22,9 @@ endif
 if !exists('g:sm_terminal_images_subdir_glob')
   let g:sm_terminal_images_subdir_glob = '*'
 endif
+if !exists('g:sm_terminal_images_content_len_to_hash')
+    let g:sm_terminal_images_content_len_to_hash = 64*1024
+endif
 
 " Highlight group used for floating window background. The background can also
 " be controlled in per-buffer manner by setting `b:terminal_images_background`.

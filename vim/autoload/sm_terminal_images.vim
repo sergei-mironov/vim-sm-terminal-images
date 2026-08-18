@@ -284,12 +284,13 @@ fun! sm_terminal_images#QuickContentHash(filename) " str|v:null
     " Returns md5 hash of at most first 4096 bytes of a:filename. (a)
     " If the file cannot be read, returns an empty string. (b)
     try
-        let l:blob = readblob(a:filename, 0, 16*1024)
+        let hsz = s:Get('sm_terminal_images_content_len_to_hash')
+        let blob = readblob(a:filename, 0, hsz)
     catch
         return v:null
     endtry
 
-    if empty(l:blob)
+    if empty(blob)
         return v:null
     endif
     let sha = sha256(blob)
