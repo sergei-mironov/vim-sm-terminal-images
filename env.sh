@@ -1,7 +1,8 @@
 CWD=`pwd`
 export PROJECT_SOURCE="$CWD"
 export VIM_PLUGINS="$CWD/vim_dev,$CWD/vim"
-export TUPIMAGE_UPLOADING_METHOD=file
+export TUPIMAGE_UPLOADING_METHOD=direct
+export TMUX=xxx
 
 update_pathvar() {
     case "$(eval echo \"\$$1\")" in
